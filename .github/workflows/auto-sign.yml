@@ -1,0 +1,42 @@
+name: Auto Sign
+
+on:
+  schedule:
+    # UTC 00:17 = Asia/Singapore / China 08:17. GitHub cron cannot read Variables.
+    - cron: '17 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: 150cn-auto-sign
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@d9184bf108216479bc5a137cc391f4d7b14c870b # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Install Chromium and system dependencies
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Log in and attempt free renewal
+        run: pnpm start
+        env:
+          SITE_BASE_URL: ${{ vars.SITE_BASE_URL }}
+          SITE_USERNAME: ${{ secrets.SITE_USERNAME }}
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+          BROWSER_HEADLESS: ${{ vars.BROWSER_HEADLESS }}
+          BROWSER_TIMEOUT_MS: ${{ vars.BROWSER_TIMEOUT_MS }}
+          ACTION_DELAY_MIN_MS: ${{ vars.ACTION_DELAY_MIN_MS }}
+          ACTION_DELAY_MAX_MS: ${{ vars.ACTION_DELAY_MAX_MS }}
