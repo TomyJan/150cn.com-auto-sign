@@ -20,6 +20,13 @@ async function visit(t, options = {}, overrides = {}) {
     await fixture.close();
   });
   const page = await context.newPage();
+  const submissionRequests = [];
+  context.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.origin !== fixture.baseUrl || url.pathname.endsWith('_sub.asp')) {
+      submissionRequests.push({ url: request.url(), method: request.method() });
+    }
+  });
   const config = {
     ...fixtureCredentials,
     baseUrl: fixture.baseUrl,
@@ -28,7 +35,7 @@ async function visit(t, options = {}, overrides = {}) {
     maxDelayMs: 0,
     ...overrides,
   };
-  return { fixture, result: () => runSite(page, config) };
+  return { fixture, submissionRequests, result: () => runSite(page, config) };
 }
 
 // Catches filling the decoy form, hardcoded IDs and treating a business rejection as a failure.
@@ -117,13 +124,32 @@ for (const [name, options] of [
   ['a mismatched form ID', { hiddenId: '999' }],
   ['an expired session on the form', { formExpired: true }],
   ['a form HTTP error', { formStatus: 500 }],
+  [
+    'a button overriding to a paid action',
+    { buttonAttributes: 'formaction="server_renew_sub.asp"' },
+  ],
+  [
+    'a button overriding to an external action',
+    { buttonAttributes: 'formaction="https://other.test/submit"' },
+  ],
+  ['a button overriding the method', { buttonAttributes: 'formmethod="get"' }],
+  ['a button overriding the target', { buttonAttributes: 'formtarget="_blank"' }],
 ]) {
   test(`${name} is a technical error and never submits`, async (t) => {
-    const { fixture, result } = await visit(t, options);
+    const { fixture, submissionRequests, result } = await visit(t, options);
     assert.equal((await result()).renewals[0].status, 'error');
     assert.equal(fixture.submissions.length, 0);
+    assert.equal(submissionRequests.length, 0);
   });
 }
+
+test('a button explicitly preserving the free action and POST method still works', async (t) => {
+  const { fixture, result } = await visit(t, {
+    buttonAttributes: 'formaction="server_free_renew_sub.asp" formmethod="post" formtarget="_self"',
+  });
+  assert.equal((await result()).renewals[0].status, 'already-renewed');
+  assert.equal(fixture.submissions.length, 1);
+});
 
 for (const [name, options] of [
   ['HTTP 500', { submitStatus: 500 }],

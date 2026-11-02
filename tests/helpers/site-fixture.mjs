@@ -76,7 +76,7 @@ export async function createFixture(options = {}) {
         <div class="manager-title">免费版延期</div>
         <span id="moneyprice">${options.price ?? '￥0.0'}</span>
         <input type="hidden" name="id" value="${options.hiddenId ?? id}">
-        <input type="submit" id="submit" value="\u3000服务器延期\u3000"></form>`),
+        <input type="submit" id="submit" value="\u3000服务器延期\u3000" ${options.buttonAttributes ?? ''}></form>`),
       );
     }
     if (req.method === 'POST') {

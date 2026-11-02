@@ -160,9 +160,27 @@ async function renew(page, target, config) {
     throw new SiteError('延期表单不是已确认的零费用操作，已停止提交。');
   }
   await pause(config);
+  const button = form.getByRole('button', { name: /服务器延期/ });
+  const submission = await button.evaluate((submitter) => {
+    const owner = submitter.form;
+    return {
+      belongsToForm: owner === submitter.closest('form'),
+      action: submitter.hasAttribute('formaction') ? submitter.formAction : owner?.action,
+      method: submitter.hasAttribute('formmethod') ? submitter.formMethod : owner?.method,
+      target: submitter.hasAttribute('formtarget') ? submitter.formTarget : owner?.target,
+    };
+  });
+  if (
+    !submission.belongsToForm ||
+    submission.action !== action.href ||
+    submission.method?.toLowerCase() !== 'post' ||
+    !['', '_self'].includes(submission.target)
+  ) {
+    throw new SiteError('延期按钮覆盖了预期提交方式，已停止提交。');
+  }
   const [response] = await Promise.all([
     page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
-    form.getByRole('button', { name: /服务器延期/ }).click(),
+    button.click(),
   ]);
   checkResponse(response);
   assertOrigin(page, config);
