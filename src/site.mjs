@@ -121,20 +121,28 @@ async function discoverRenewals(page, config) {
 }
 
 function classifyResult(message) {
-  if (/数据库|系统异常|服务器错误|程序错误/.test(message)) {
-    throw new SiteError('延期响应包含站点技术故障。');
+  message = message.replace(/\s+/g, '');
+  if (
+    /登录|会话|身份验证|网络|连接|超时|数据库|系统(?:异常|错误|繁忙)|服务器(?:错误|异常)|程序错误/.test(
+      message,
+    )
+  ) {
+    throw new SiteError('延期响应包含认证、网络或站点技术故障。');
+  }
+  const beforeWindow =
+    /(?:未到|尚未到|还未到|还没到)(?:免费)?(?:续费|延期|续期)(?:时间|日期|期限)/.test(message);
+  const limitedWindow = /(?:仅限|只能|仅能)(?:在)?到期前\d+(?:天|小时)(?:内)?/.test(message);
+  if ((beforeWindow || limitedWindow) && /续费|延期|续期/.test(message)) {
+    return { status: 'rejected', message: '尚未满足站点免费延期时间条件。' };
+  }
+  if (/失败|不成功|未成功|无法|不能/.test(message)) {
+    throw new SiteError('延期返回原因不明的失败提示，需要检查站点。');
   }
   if (/今[日天].*(已经|已).*(续费|延期)|已经.*(续费|延期).*过/.test(message)) {
     return { status: 'already-renewed', message: '今日已经续费过了。' };
   }
   if (/(延期|续费|续期).{0,8}成功|成功.{0,8}(延期|续费|续期)/.test(message)) {
     return { status: 'renewed', message: '免费延期成功。' };
-  }
-  if (
-    /(延期|续费|续期)/.test(message) &&
-    /失败|不能|无法|暂|未到|不允许|限制|超过|不足/.test(message)
-  ) {
-    return { status: 'rejected', message: '站点业务规则拒绝本次免费延期。' };
   }
   throw new SiteError('无法识别延期结果，需检查站点是否改版。');
 }

@@ -57,8 +57,9 @@ for (const [message, status] of [
   ['服务器延期成功！', 'renewed'],
   ['今日已经续费过了！', 'already-renewed'],
   ['未到续费时间，暂时不能延期！', 'rejected'],
+  ['延期仅限到期前1天内办理，暂时不能延期！', 'rejected'],
 ]) {
-  test(`business response: ${status} completes normally`, async (t) => {
+  test(`business response: ${message} completes normally`, async (t) => {
     const { result } = await visit(t, { message });
     const actual = await result();
     assert.equal(actual.renewals[0].status, status);
@@ -156,6 +157,10 @@ for (const [name, options] of [
   ['expired session', { submitExpired: true }],
   ['unknown result page', { unknownResult: true }],
   ['unknown business message', { message: '数据库出现异常' }],
+  ['an expired-login message', { message: '登录状态已失效，无法续费，请重新登录！' }],
+  ['a network-failure message', { message: '网络连接超时，续费失败！' }],
+  ['an ambiguous failure message', { message: '延期失败，请联系管理员！' }],
+  ['a negated success message', { message: '延期不成功，请联系管理员！' }],
   ['response timeout', { noResponse: true }],
 ]) {
   test(`${name} after submitting remains an error and is not retried`, async (t) => {

@@ -67,6 +67,16 @@ test('CLI exits nonzero for a technical error after a successful login', async (
   assert.equal(run.fixture.submissions.length, 1);
 });
 
+for (const message of ['登录状态已失效，无法续费，请重新登录！', '网络连接超时，续费失败！']) {
+  test(`CLI exits nonzero for technical response: ${message}`, async (t) => {
+    const run = await runCli(t, { message });
+    assert.equal(run.code, 1, run.output);
+    assert.match(run.output, /登录成功/);
+    assert.match(run.output, /运行异常/);
+    assert.equal(run.fixture.submissions.length, 1);
+  });
+}
+
 test('CLI rejects a missing secret before visiting the website', async (t) => {
   const run = await runCli(t, {}, { SITE_PASSWORD: '' });
   assert.equal(run.code, 1);
