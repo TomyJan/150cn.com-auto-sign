@@ -1,0 +1,6 @@
+minimumReleaseAgeExclude:
+  - minimatch@11.0.4
+overrides:
+  # GHSA-g3hv-75wg-m249: ESLint still requests minimatch 10, which is affected.
+  # Version 11 preserves the matching APIs used by ESLint and supports our Node runtime.
+  'minimatch@>=10 <11': 11.0.4
