@@ -4,7 +4,7 @@
   "private": true,
   "description": "Browser-based free server renewal for 150cn.com on GitHub Actions",
   "type": "module",
-  "license": "MIT",
+  "license": "MPL-2.0",
   "packageManager": "pnpm@12.11.2",
   "engines": {
     "node": ">=22.13.0"
@@ -27,6 +27,7 @@
     "@eslint/js": "10.0.1",
     "eslint": "10.14.0",
     "globals": "17.14.0",
-    "prettier": "3.9.10"
+    "prettier": "3.9.10",
+    "selfsigned": "5.5.0"
   }
 }
