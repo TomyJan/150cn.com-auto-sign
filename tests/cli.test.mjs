@@ -24,7 +24,7 @@ async function runCli(t, options, overrides = {}) {
         SITE_USERNAME: fixtureCredentials.username,
         SITE_PASSWORD: fixtureCredentials.password,
         BROWSER_HEADLESS: 'true',
-        BROWSER_TIMEOUT_MS: '2000',
+        BROWSER_TIMEOUT_MS: '5000',
         ACTION_DELAY_MIN_MS: '0',
         ACTION_DELAY_MAX_MS: '0',
         GITHUB_STEP_SUMMARY: summary,

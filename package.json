@@ -14,7 +14,7 @@
     "start:local": "node --env-file=.env src/cli.mjs",
     "test:unit": "node --test tests/config.test.mjs",
     "test:browser": "node --test tests/site.test.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

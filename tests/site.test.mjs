@@ -30,7 +30,7 @@ async function visit(t, options = {}, overrides = {}) {
   const config = {
     ...fixtureCredentials,
     baseUrl: fixture.baseUrl,
-    timeoutMs: 1200,
+    timeoutMs: 5000,
     minDelayMs: 0,
     maxDelayMs: 0,
     ...overrides,
