@@ -33,7 +33,6 @@ jobs:
       - name: Log in and attempt free renewal
         run: pnpm start
         env:
-          SITE_BASE_URL: ${{ vars.SITE_BASE_URL }}
           SITE_USERNAME: ${{ secrets.SITE_USERNAME }}
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
           BROWSER_HEADLESS: ${{ vars.BROWSER_HEADLESS }}

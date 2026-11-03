@@ -16,7 +16,7 @@ function integer(env, name, fallback, min, max) {
 }
 
 export function loadConfig(env = process.env) {
-  const rawUrl = required(env, 'SITE_BASE_URL');
+  const rawUrl = env.SITE_BASE_URL || 'https://www.150cn.com';
   let url;
   try {
     url = new URL(rawUrl);

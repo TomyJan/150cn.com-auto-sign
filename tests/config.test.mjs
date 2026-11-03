@@ -4,7 +4,6 @@ import { loadConfig } from '../src/config.mjs';
 import { formatReport, redact } from '../src/report.mjs';
 
 const env = {
-  SITE_BASE_URL: 'https://example.test',
   SITE_USERNAME: 'fixture-account',
   SITE_PASSWORD: 'fixture password & value',
 };
@@ -13,9 +12,14 @@ const env = {
 test('credentials are required and passwords are preserved exactly', () => {
   assert.equal(loadConfig(env).password, 'fixture password & value');
   assert.equal(loadConfig({ ...env, SITE_PASSWORD: ' space ' }).password, ' space ');
-  for (const key of ['SITE_BASE_URL', 'SITE_USERNAME', 'SITE_PASSWORD']) {
+  for (const key of ['SITE_USERNAME', 'SITE_PASSWORD']) {
     assert.throws(() => loadConfig({ ...env, [key]: '' }), new RegExp(key));
   }
+});
+
+test('credentials alone are enough and an unset site URL uses the built-in address', () => {
+  assert.equal(loadConfig(env).baseUrl, 'https://www.150cn.com');
+  assert.equal(loadConfig({ ...env, SITE_BASE_URL: '' }).baseUrl, 'https://www.150cn.com');
 });
 
 // Catches sending credentials to a path, embedded userinfo or insecure origin.
