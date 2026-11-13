@@ -20,6 +20,20 @@
 
 站点地址内置为 `https://www.150cn.com`，无需配置。只需提供上面的两个账号密码 Secrets，其他运行参数均可使用默认值。
 
+### Telegram 推送
+
+本地与 GitHub Actions 使用相同的环境变量名称；在 Actions 中配置为 Repository Secrets：
+
+| Secret               | 含义                                                       |
+| -------------------- | ---------------------------------------------------------- |
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot Token                                         |
+| `TELEGRAM_CHAT_ID`   | 接收消息的用户、群组或频道 ID                              |
+| `TELEGRAM_PROXY_URL` | 可选，仅用于 Telegram 的代理地址，支持 HTTP、HTTPS、SOCKS5 |
+
+同时提供 Token 和 Chat ID 即启用通知，不配置则跳过。每次运行结束发送一条包含运行状态、登录和免费延期结果的脱敏摘要，登录或配置失败也会通知。通知使用纯文本并关闭链接预览，过长的摘要会截断，完整结果仍可在运行日志中查看。
+
+通知失败会在日志和 Actions Summary 中明确提示，但保留签到本身的退出码，不会重新登录或重复提交延期，也不自动重发通知。请勿因为推送失败就重跑整个签到流程。
+
 默认每天 **08:17（Asia/Singapore，与北京时间相同）** 运行，即 UTC `00:17`。修改时间请编辑 `.github/workflows/auto-sign.yml` 的 `schedule.cron`；GitHub 的 cron 不支持读取 Variables，可能有调度延迟，不能保证准点执行。每天运行可在三天续期窗口内保留重试余量；程序不会自动重试已提交的延期请求。
 
 可选 Variables（未设置时使用默认值）：
@@ -69,6 +83,16 @@ pnpm start:local
 ```
 
 Linux 首次安装浏览器使用 `pnpm exec playwright install --with-deps chromium`。已经通过进程环境提供配置时，直接运行 `pnpm start`。不要把密码写入脚本、工作流 YAML、命令行参数或提交历史。
+
+本机现有 Codex 定时任务继续调用原来的入口：
+
+```powershell
+pwsh -NoProfile -File "$env:LOCALAPPDATA\150cn-auto-sign\run.ps1"
+```
+
+该入口委托给仓库中的 `scripts/run-local.ps1`：网站账号继续从当前 Windows 用户 DPAPI 加密的 `site-credential.xml` 读取；Telegram 配置优先使用当前进程环境，缺失时读取同名 Windows 用户环境变量，只在运行期间注入并在结束后恢复。没有显式提供 `TELEGRAM_PROXY_URL` 时，使用已启用的 Windows 系统 HTTP/HTTPS 代理，仅影响 Telegram 请求，不改变网站访问路径。不需要复制速维云项目的账号配置或在本项目保存 Telegram Token。
+
+其他 Windows 机器如果已准备好自己的 DPAPI 凭据文件，也可直接运行 `pwsh -NoProfile -File scripts/run-local.ps1 -CredentialPath <凭据文件路径>`。普通的 `pnpm start` / `pnpm start:local` 使用进程环境或 `.env` 中相同的 Telegram 变量名称；代理需通过 `TELEGRAM_PROXY_URL` 显式提供。
 
 ## 开发验证
 

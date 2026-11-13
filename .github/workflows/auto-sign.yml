@@ -35,6 +35,9 @@ jobs:
         env:
           SITE_USERNAME: ${{ secrets.SITE_USERNAME }}
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_PROXY_URL: ${{ secrets.TELEGRAM_PROXY_URL }}
           BROWSER_HEADLESS: ${{ vars.BROWSER_HEADLESS }}
           BROWSER_TIMEOUT_MS: ${{ vars.BROWSER_TIMEOUT_MS }}
           ACTION_DELAY_MIN_MS: ${{ vars.ACTION_DELAY_MIN_MS }}

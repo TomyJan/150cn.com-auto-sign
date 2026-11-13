@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { createFixture, fixtureCredentials } from './helpers/site-fixture.mjs';
+import { createTelegramFixture } from './helpers/telegram-fixture.mjs';
 
 async function runCli(t, options, overrides = {}) {
   const fixture = await createFixture({ ...options, secure: true });
@@ -28,6 +29,9 @@ async function runCli(t, options, overrides = {}) {
         ACTION_DELAY_MIN_MS: '0',
         ACTION_DELAY_MAX_MS: '0',
         GITHUB_STEP_SUMMARY: summary,
+        TELEGRAM_BOT_TOKEN: '',
+        TELEGRAM_CHAT_ID: '',
+        TELEGRAM_PROXY_URL: '',
         ...overrides,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -91,4 +95,61 @@ test('CLI redacts failed login diagnostics instead of printing password-bearing 
   assert.ok(!run.output.includes(password));
   assert.ok(!run.output.includes(fixtureCredentials.username));
   assert.equal(run.fixture.submissions.length, 0);
+});
+
+test('CLI notifies normal business refusals without repeating renewal', async (t) => {
+  const telegram = await createTelegramFixture(t);
+  const run = await runCli(
+    t,
+    {},
+    {
+      TELEGRAM_BOT_TOKEN: '123456:fixture-token',
+      TELEGRAM_CHAT_ID: '-100123456',
+      TEST_TELEGRAM_URL: telegram.url,
+    },
+  );
+  assert.equal(run.code, 0, run.output);
+  assert.equal(run.fixture.submissions.length, 1);
+  assert.equal(telegram.messages.length, 1);
+  assert.match(telegram.messages[0].data.text, /already-renewed/);
+  assert.match(run.output, /Telegram.*成功/);
+});
+
+test('CLI preserves a successful renewal exit code when Telegram fails', async (t) => {
+  const telegram = await createTelegramFixture(t, { status: 500 });
+  const run = await runCli(
+    t,
+    {},
+    {
+      TELEGRAM_BOT_TOKEN: '123456:fixture-token',
+      TELEGRAM_CHAT_ID: '-100123456',
+      TEST_TELEGRAM_URL: telegram.url,
+    },
+  );
+  assert.equal(run.code, 0, run.output);
+  assert.equal(run.fixture.submissions.length, 1);
+  assert.equal(telegram.messages.length, 1);
+  assert.match(run.output, /Telegram.*失败/);
+  assert.match(await readFile(run.summary, 'utf8'), /Telegram.*失败/);
+});
+
+test('CLI sends login and configuration failures without changing the failure exit code', async (t) => {
+  for (const password of ['', 'wrong-password']) {
+    const telegram = await createTelegramFixture(t);
+    const run = await runCli(
+      t,
+      {},
+      {
+        SITE_PASSWORD: password,
+        TELEGRAM_BOT_TOKEN: '123456:fixture-token',
+        TELEGRAM_CHAT_ID: '-100123456',
+        TEST_TELEGRAM_URL: telegram.url,
+      },
+    );
+    assert.equal(run.code, 1, run.output);
+    assert.equal(run.fixture.submissions.length, 0);
+    assert.equal(telegram.messages.length, 1);
+    assert.match(telegram.messages[0].data.text, /❌/);
+    assert.ok(!telegram.messages[0].data.text.includes('wrong-password'));
+  }
 });

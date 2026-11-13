@@ -3,6 +3,7 @@ import { chromium } from 'playwright';
 import { loadConfig } from './config.mjs';
 import { formatReport, redact } from './report.mjs';
 import { runSite, SiteError } from './site.mjs';
+import { notifyTelegram } from './telegram.mjs';
 
 let browser;
 let report;
@@ -10,12 +11,17 @@ let config;
 try {
   config = loadConfig();
 } catch (error) {
-  console.error(`配置错误：${error.message}`);
+  report = `配置错误：${error.message}`;
   process.exitCode = 1;
 }
 
 if (config) {
-  const secrets = [config.username, config.password];
+  const secrets = [
+    config.username,
+    config.password,
+    process.env.TELEGRAM_BOT_TOKEN,
+    process.env.TELEGRAM_CHAT_ID,
+  ];
   try {
     browser = await chromium.launch({ headless: config.headless });
     const context = await browser.newContext({
@@ -42,13 +48,28 @@ if (config) {
       process.exitCode = 1;
     }
   }
-  console.log(report);
+}
+
+console.log(report);
+if (process.env.GITHUB_STEP_SUMMARY) {
+  try {
+    await appendFile(process.env.GITHUB_STEP_SUMMARY, `${report}\n`, 'utf8');
+  } catch {
+    report += '\n无法写入 Actions 运行摘要。';
+    console.error('无法写入 Actions 运行摘要。');
+    process.exitCode = 1;
+  }
+}
+
+try {
+  const notification = await notifyTelegram(report, { success: process.exitCode !== 1 });
+  if (notification.status === 'sent') console.log('Telegram 推送成功。');
+} catch (error) {
+  // Preserve the website's exit code so notification failures cannot cause repeat submissions.
+  console.error(error.message);
   if (process.env.GITHUB_STEP_SUMMARY) {
-    try {
-      await appendFile(process.env.GITHUB_STEP_SUMMARY, `${report}\n`, 'utf8');
-    } catch {
-      console.error('无法写入 Actions 运行摘要。');
-      process.exitCode = 1;
-    }
+    await appendFile(process.env.GITHUB_STEP_SUMMARY, `\n${error.message}\n`, 'utf8').catch(
+      () => {},
+    );
   }
 }
