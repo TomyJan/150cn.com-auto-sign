@@ -11,6 +11,7 @@ const shell = (body) => `<!doctype html><html lang="zh-CN"><meta charset="UTF-8"
 export async function createFixture(options = {}) {
   const submissions = [];
   const credentials = [];
+  const renewedIds = new Set();
   const handler = async (req, res) => {
     const url = new URL(req.url, 'http://fixture.test');
     const reply = (body, status = 200, headers = {}) => {
@@ -60,7 +61,11 @@ export async function createFixture(options = {}) {
         shell(`<table class="manager-table"><tr><th>型号</th><th>到期日期</th>
         <th>管理</th></tr>${ids
           .map(
-            (id) => `<tr><td>挂机宝免费版</td><td>2026-11-05</td><td>
+            (id) => `<tr><td>挂机宝免费版</td><td>${
+              renewedIds.has(id)
+                ? (options.renewedExpiryDate ?? '2026年11月26日(13:41)')
+                : (options.expiryDate ?? '2026-11-05')
+            }</td><td>
         <a href="${options.link ?? `server_free_renew.html?id=${id}`}">免费延期</a>
         <a href="server_renew.html?id=${id}">付费续费</a></td></tr>`,
           )
@@ -88,6 +93,10 @@ export async function createFixture(options = {}) {
       if (options.submitExpired) return redirect('/login/');
       if (options.unknownResult) return reply(shell('未知页面'));
       if (options.noResponse) return; // Response timeout: the POST must never be retried.
+      const message = options.results?.[id] ?? options.message ?? '今日已经续费过了！';
+      if (/(延期|续费|续期).{0,8}成功|成功.{0,8}(延期|续费|续期)/.test(message)) {
+        renewedIds.add(id);
+      }
       return redirect(`/services/tip.html?id=${id}`);
     }
     if (url.pathname === '/services/tip.html') {

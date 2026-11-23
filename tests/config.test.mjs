@@ -91,3 +91,18 @@ test('reporting redacts credentials and neutralizes extra lines', () => {
 test('a run with no free servers has an explicit successful report', () => {
   assert.match(formatReport({ login: 'success', renewals: [] }), /未发现/);
 });
+
+test('successful free renewals include their site-reported expiry date', () => {
+  const report = formatReport({
+    login: 'success',
+    renewals: [
+      {
+        status: 'renewed',
+        message: '免费延期成功。',
+        expiresAt: '2026年11月26日(13:41)',
+      },
+    ],
+  });
+  assert.match(report, /到期时间：2026年11月26日 13:41:00/);
+  assert.ok(!report.includes('延期成功时间'));
+});

@@ -81,25 +81,26 @@ async function discoverRenewals(page, config) {
     await table.waitFor({ state: 'visible' });
     // An unrecognized page must not be mistaken for an empty account.
     const headers = await table.locator('th').allTextContents();
-    if (
-      !headers.some((text) => text.includes('型号')) ||
-      !headers.some((text) => text.includes('到期日期'))
-    ) {
+    const expiryIndex = headers.findIndex((text) => text.includes('到期日期'));
+    if (!headers.some((text) => text.includes('型号')) || expiryIndex < 0) {
       throw new SiteError('服务器列表结构变化，无法确认免费延期目标。');
     }
-    const links = await table
-      .locator('a')
-      .evaluateAll((anchors) =>
+    const links = await table.locator('a').evaluateAll(
+      (anchors, index) =>
         anchors
           .filter(
             (a) =>
               a.textContent.trim() === '免费延期' ||
               a.getAttribute('href')?.includes('server_free_renew'),
           )
-          .map((a) => a.getAttribute('href')),
-      );
+          .map((a) => ({
+            href: a.getAttribute('href'),
+            expiresAt: a.closest('tr')?.cells?.[index]?.innerText.trim(),
+          })),
+      expiryIndex,
+    );
     const targets = new Map();
-    for (const href of links) {
+    for (const { href, expiresAt } of links) {
       const url = new URL(href, page.url());
       const id = url.searchParams.get('id');
       if (
@@ -111,9 +112,10 @@ async function discoverRenewals(page, config) {
       ) {
         throw new SiteError('免费延期链接异常，已停止操作。');
       }
-      targets.set(id, url.href);
+      if (!expiresAt) throw new SiteError('服务器列表缺少挂机宝到期日期。');
+      targets.set(id, { url: url.href, expiresAt });
     }
-    return [...targets].map(([id, url]) => ({ id, url }));
+    return [...targets].map(([id, target]) => ({ id, ...target }));
   } catch (error) {
     if (error instanceof SiteError) throw error;
     throw new SiteError('获取服务器列表异常：页面结构变化、连接失败或等待超时。');
@@ -145,6 +147,12 @@ function classifyResult(message) {
     return { status: 'renewed', message: '免费延期成功。' };
   }
   throw new SiteError('无法识别延期结果，需检查站点是否改版。');
+}
+
+async function readCurrentExpiryDate(page, id, config) {
+  const target = (await discoverRenewals(page, config)).find((item) => item.id === id);
+  if (!target) throw new SiteError('延期后无法从服务器列表读取最新到期日期。');
+  return target.expiresAt;
 }
 
 async function renew(page, target, config) {
@@ -196,7 +204,12 @@ async function renew(page, target, config) {
     throw new SiteError('延期后未出现预期结果页，可能会话失效或站点改版。');
   }
   const message = await page.locator('.layui-layer-content').innerText();
-  return classifyResult(message);
+  const result = classifyResult(message);
+  result.expiresAt =
+    result.status === 'renewed'
+      ? await readCurrentExpiryDate(page, target.id, config)
+      : target.expiresAt;
+  return result;
 }
 
 export async function runSite(page, config) {

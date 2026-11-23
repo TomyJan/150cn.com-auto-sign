@@ -115,6 +115,25 @@ test('CLI notifies normal business refusals without repeating renewal', async (t
   assert.match(run.output, /Telegram.*成功/);
 });
 
+test('CLI prints and pushes the site expiry date for a successful free renewal', async (t) => {
+  const telegram = await createTelegramFixture(t);
+  const run = await runCli(
+    t,
+    { message: '服务器延期成功！', renewedExpiryDate: '2026年11月26日(13:41)' },
+    {
+      TELEGRAM_BOT_TOKEN: '123456:fixture-token',
+      TELEGRAM_CHAT_ID: '-100123456',
+      TEST_TELEGRAM_URL: telegram.url,
+    },
+  );
+  assert.equal(run.code, 0, run.output);
+  assert.match(run.output, /到期时间：2026年11月26日 13:41:00/);
+  assert.ok(telegram.messages[0].data.text.includes('到期时间：2026年11月26日 13:41:00'));
+  assert.ok((await readFile(run.summary, 'utf8')).includes('到期时间：2026年11月26日 13:41:00'));
+  assert.ok(!run.output.includes('延期成功时间'));
+  assert.equal(run.fixture.submissions.length, 1);
+});
+
 test('CLI preserves a successful renewal exit code when Telegram fails', async (t) => {
   const telegram = await createTelegramFixture(t, { status: 500 });
   const run = await runCli(

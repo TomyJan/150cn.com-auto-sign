@@ -63,6 +63,11 @@ for (const [message, status] of [
     const { result } = await visit(t, { message });
     const actual = await result();
     assert.equal(actual.renewals[0].status, status);
+    if (status === 'renewed') {
+      assert.equal(actual.renewals[0].expiresAt, '2026年11月26日(13:41)');
+    } else {
+      assert.equal(actual.renewals[0].expiresAt, '2026-11-05');
+    }
   });
 }
 
